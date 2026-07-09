@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Event Check-In</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 16px; max-width: 500px; margin: 0 auto; }
+  .header { background: #1a2b45; color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
+  .header h2 { font-size: 18px; }
+  .header p { color: #8fa8c8; font-size: 13px; margin-top: 4px; }
+  #reader { width: 100%; border-radius: 8px; overflow: hidden; background: #000; min-height: 250px; }
+  .manual { margin-top: 16px; display: flex; gap: 8px; }
+  .manual input { flex: 1; padding: 14px; font-size: 18px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
+  .manual button { padding: 14px 20px; font-size: 16px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
+  #result { margin-top: 16px; padding: 24px; border-radius: 8px; text-align: center; display: none; }
+  #result .name { font-size: 26px; font-weight: bold; margin: 8px 0; }
+  #result .sub { font-size: 15px; margin-top: 8px; }
+  .ok { background: #c0dd97; color: #173404; }
+  .warn { background: #fac775; color: #633806; }
+  .err { background: #f09595; color: #501313; }
+  .confirmbtns { margin-top: 16px; }
+  .confirmbtns button { padding: 12px 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; cursor: pointer; }
+  .cbyes { background: #27500a; color: #fff; }
+  .cbno { background: #999; color: #fff; }
+  .status-line { text-align: center; color: #666; font-size: 13px; margin-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h2>Event Check-In</h2>
+    <p id="eventName">Scan attendee QR code</p>
+  </div>
+
+  <div id="reader"></div>
+
+  <div class="manual">
+    <input type="text" id="manualId" placeholder="Or type code (FCS26-XXXX)" autocomplete="off">
+    <button onclick="submitManual()">Go</button>
+  </div>
+
+  <div id="result"></div>
+  <div class="status-line" id="statusLine"></div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    // --- CONFIG ---
+    var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyVlSsvbqw4Vx0auQNK7AxqUQdhjypLZ5DRa3QJVBQZS_KbYEEWq8kwiHokSAWNhArJAg/exec";
+    var TOKEN = new URLSearchParams(window.location.search).get('token') || '';
+
+    var lastScan = '', lastScanTime = 0, currentRegId = '';
+
+    if (!TOKEN) {
+      document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN to the address.';
+    }
+
+    // --- Auto-start native camera ---
+    var scanner = new Html5Qrcode("reader");
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onScan,
+      function(err){ /* ignore per-frame decode noise */ }
+    ).catch(function(e){
+      document.getElementById('statusLine').textContent = 'Camera unavailable — use manual entry. (' + e + ')';
+    });
+
+    function onScan(text) {
+      var now = Date.now();
+      if (text === lastScan && (now - lastScanTime) < 3000) return; // debounce
+      lastScan = text; lastScanTime = now;
+      checkIn(text, false);
+    }
+
+    function submitManual() {
+      var v = document.getElementById('manualId').value.trim();
+      if (v) checkIn(v, false);
+    }
+
+    function checkIn(regId, confirmWaitlist) {
+      currentRegId = regId;
+      document.getElementById('statusLine').textContent = 'Checking...';
+      var body = 'token=' + encodeURIComponent(TOKEN) +
+                 '&regId=' + encodeURIComponent(regId) +
+                 '&confirm=' + (confirmWaitlist ? 'true' : 'false');
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      })
+      .then(function(r){ return r.json(); })
+      .then(handleResult)
+      .catch(function(e){ showResult('err', 'Network error', String(e)); });
+    }
+
+    function handleResult(res) {
+      document.getElementById('statusLine').textContent = '';
+      document.getElementById('manualId').value = '';
+      if (res.ok) {
+        showResult('ok', '✓ ' + res.name, res.waitlist ? 'Checked in (was waitlist)' : 'Checked in');
+      } else if (res.error === 'ALREADY') {
+        showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
+      } else if (res.error === 'WAITLIST_CONFIRM') {
+        showWaitlistConfirm(res);
+      } else if (res.error === 'CANCELLED') {
+        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
+      } else if (res.error === 'NOTFOUND') {
+        showResult('err', '✗ Not found', 'No registration matches that code');
+      } else if (res.error === 'AUTH') {
+        showResult('err', '✗ Auth error', 'Invalid token');
+      } else if (res.error === 'EMPTY') {
+        showResult('err', '✗ Empty', 'No code provided');
+      } else {
+        showResult('err', '✗ Error', res.detail || 'Unknown error');
+      }
+    }
+
+    function showResult(cls, title, sub) {
+      var r = document.getElementById('result');
+      r.className = cls;
+      r.style.display = 'block';
+      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub||'') + '</div>';
+    }
+
+    function showWaitlistConfirm(res) {
+      var r = document.getElementById('result');
+      r.className = 'warn';
+      r.style.display = 'block';
+      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
+        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
+        '<div class="confirmbtns">' +
+        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
+        '<button class="cbno" onclick="clearResult()">Cancel</button>' +
+        '</div>';
+    }
+
+    function clearResult() { document.getElementById('result').style.display = 'none'; }
+  </script>
+</body>
+</html>
