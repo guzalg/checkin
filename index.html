@@ -6,69 +6,84 @@
 <title>Event Check-In</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 16px; max-width: 500px; margin: 0 auto; }
-  .header { background: #1a2b45; color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
-  .header h2 { font-size: 18px; }
-  .header p { color: #8fa8c8; font-size: 13px; margin-top: 4px; }
-  #reader { width: 100%; border-radius: 8px; overflow: hidden; background: #000; min-height: 250px; }
-  .manual { margin-top: 16px; display: flex; gap: 8px; }
-  .manual input { flex: 1; padding: 14px; font-size: 18px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
-  .manual button { padding: 14px 20px; font-size: 16px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
-  #result { margin-top: 16px; padding: 24px; border-radius: 8px; text-align: center; display: none; }
-  #result .name { font-size: 26px; font-weight: bold; margin: 8px 0; }
-  #result .sub { font-size: 15px; margin-top: 8px; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 12px; max-width: 500px; margin: 0 auto; }
+  .header { background: #1a2b45; color: #fff; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 12px; position: relative; }
+  .header h2 { font-size: 22px; }
+  .header p { color: #8fa8c8; font-size: 15px; margin-top: 4px; }
+  .reset-btn { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 14px; font-weight: bold; }
+  #result { padding: 20px; border-radius: 8px; text-align: center; display: none; margin-bottom: 12px; }
+  #result .name { font-size: 26px; font-weight: bold; margin: 4px 0; }
+  #result .sub { font-size: 16px; margin-top: 6px; }
   .ok { background: #c0dd97; color: #173404; }
   .warn { background: #fac775; color: #633806; }
+  .waitlist { background: #fdf6e9; color: #854f0b; border: 2px solid #854f0b; }
   .err { background: #f09595; color: #501313; }
-  .confirmbtns { margin-top: 16px; }
-  .confirmbtns button { padding: 12px 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; cursor: pointer; }
-  .cbyes { background: #27500a; color: #fff; }
+  .confirmbtns { margin-top: 14px; }
+  .confirmbtns button { padding: 12px 18px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; }
+  .cbyes { background: #854f0b; color: #fff; }
   .cbno { background: #999; color: #fff; }
-  .status-line { text-align: center; color: #666; font-size: 13px; margin-top: 12px; }
+  #reader { width: 100%; max-width: 300px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
+  .manual { margin-top: 12px; display: flex; gap: 8px; }
+  .manual input { flex: 1; padding: 14px; font-size: 18px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
+  .manual button { padding: 14px 20px; font-size: 16px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
+  .status-line { text-align: center; color: #666; font-size: 13px; margin-top: 10px; }
 </style>
 </head>
 <body>
   <div class="header">
-    <h2>Event Check-In</h2>
-    <p id="eventName">Scan attendee QR code</p>
+    <button class="reset-btn" onclick="softReset()">↻ Reset</button>
+    <h2>Check-In</h2>
+    <p id="eventName">Loading event…</p>
   </div>
+
+  <div id="result"></div>
 
   <div id="reader"></div>
 
   <div class="manual">
-    <input type="text" id="manualId" placeholder="Type last 4: e.g. K7M2" autocomplete="off">
+    <input type="text" id="manualId" placeholder="Type last 4" autocomplete="off">
     <button onclick="submitManual()">Go</button>
   </div>
 
-  <div id="result"></div>
   <div class="status-line" id="statusLine"></div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
-    // --- CONFIG ---
     var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyVlSsvbqw4Vx0auQNK7AxqUQdhjypLZ5DRa3QJVBQZS_KbYEEWq8kwiHokSAWNhArJAg/exec";
     var TOKEN = new URLSearchParams(window.location.search).get('token') || '';
-
+    var EVENT_PREFIX = ''; // filled from config fetch
     var lastScan = '', lastScanTime = 0, currentRegId = '';
 
     if (!TOKEN) {
-      document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN to the address.';
+      document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN';
     }
+
+    // --- Fetch event name + prefix from Apps Script ---
+    fetch(WEBAPP_URL + '?action=config&token=' + encodeURIComponent(TOKEN))
+      .then(function(r){ return r.json(); })
+      .then(function(cfg){
+        if (cfg.eventName) document.getElementById('eventName').textContent = cfg.eventName;
+        if (cfg.prefix) {
+          EVENT_PREFIX = cfg.prefix;
+          document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
+        }
+      })
+      .catch(function(){ document.getElementById('eventName').textContent = 'Check-In'; });
 
     // --- Auto-start native camera ---
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
+      { fps: 10, qrbox: { width: 220, height: 220 } },
       onScan,
-      function(err){ /* ignore per-frame decode noise */ }
+      function(){}
     ).catch(function(e){
       document.getElementById('statusLine').textContent = 'Camera unavailable — use manual entry. (' + e + ')';
     });
 
     function onScan(text) {
       var now = Date.now();
-      if (text === lastScan && (now - lastScanTime) < 3000) return; // debounce
+      if (text === lastScan && (now - lastScanTime) < 3000) return;
       lastScan = text; lastScanTime = now;
       checkIn(text, false);
     }
@@ -76,16 +91,13 @@
     function submitManual() {
       var v = document.getElementById('manualId').value.trim().toUpperCase();
       if (!v) return;
-      // Accept either "K7M2" or full "FCS26-K7M2" — prepend prefix if missing
-      if (v.indexOf('-') === -1) {
-        v = 'FCS26-' + v;
-      }
+      if (v.indexOf('-') === -1 && EVENT_PREFIX) v = EVENT_PREFIX + '-' + v;
       checkIn(v, false);
     }
 
     function checkIn(regId, confirmWaitlist) {
       currentRegId = regId;
-      document.getElementById('statusLine').textContent = 'Checking...';
+      document.getElementById('statusLine').textContent = 'Checking…';
       var body = 'token=' + encodeURIComponent(TOKEN) +
                  '&regId=' + encodeURIComponent(regId) +
                  '&confirm=' + (confirmWaitlist ? 'true' : 'false');
@@ -126,21 +138,28 @@
       r.className = cls;
       r.style.display = 'block';
       r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub||'') + '</div>';
+      window.scrollTo(0, 0);
     }
 
     function showWaitlistConfirm(res) {
       var r = document.getElementById('result');
-      r.className = 'warn';
+      r.className = 'waitlist';
       r.style.display = 'block';
       r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
         '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
         '<div class="confirmbtns">' +
         '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
-        '<button class="cbno" onclick="clearResult()">Cancel</button>' +
+        '<button class="cbno" onclick="softReset()">Cancel</button>' +
         '</div>';
+      window.scrollTo(0, 0);
     }
 
-    function clearResult() { document.getElementById('result').style.display = 'none'; }
+    function softReset() {
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('manualId').value = '';
+      document.getElementById('statusLine').textContent = '';
+      lastScan = ''; lastScanTime = 0;
+    }
   </script>
 </body>
 </html>
