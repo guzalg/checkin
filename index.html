@@ -74,8 +74,13 @@
     }
 
     function submitManual() {
-      var v = document.getElementById('manualId').value.trim();
-      if (v) checkIn(v, false);
+      var v = document.getElementById('manualId').value.trim().toUpperCase();
+      if (!v) return;
+      // Accept either "K7M2" or full "FCS26-K7M2" — prepend prefix if missing
+      if (v.indexOf('-') === -1) {
+        v = 'FCS26-' + v;
+      }
+      checkIn(v, false);
     }
 
     function checkIn(regId, confirmWaitlist) {
