@@ -11,9 +11,13 @@
   .header h2 { font-size: 20px; }
   .header p { color: #c9d6e8; font-size: 16px; margin-top: 4px; font-weight: bold; }
   .stats { display: flex; gap: 8px; margin-bottom: 10px; }
-  .stat { flex: 1; background: #fff; border: 1px solid #e0e4ea; border-radius: 8px; padding: 10px 4px; text-align: center; }
-  .stat .lbl { font-size: 10px; color: #777; letter-spacing: 0.5px; text-transform: uppercase; }
-  .stat .val { font-size: 22px; font-weight: bold; color: #1a2b45; margin-top: 2px; }
+  .stat { flex: 1; border-radius: 8px; padding: 10px 4px; text-align: center; }
+  .stat .lbl { font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .stat .val { font-size: 22px; font-weight: bold; margin-top: 2px; }
+  .s-reg  { background: #b5d4f4; } .s-reg .lbl  { color: #0c447c; } .s-reg .val  { color: #042c53; }
+  .s-chk  { background: #c0dd97; } .s-chk .lbl  { color: #27500a; } .s-chk .val  { color: #173404; }
+  .s-rem  { background: #d3d1c7; } .s-rem .lbl  { color: #444441; } .s-rem .val  { color: #2c2c2a; }
+  .s-over { background: #f09595; } .s-over .lbl { color: #501313; } .s-over .val { color: #501313; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
   .toolbar button { flex: 1; padding: 8px; font-size: 12px; font-weight: bold; background: #fff; color: #1a2b45; border: 1px solid #ccd3dd; border-radius: 6px; }
   #result { padding: 18px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
@@ -43,9 +47,9 @@
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="lbl">Registered</div><div class="val" id="sRegistered">–</div></div>
-    <div class="stat"><div class="lbl">Checked In</div><div class="val" id="sCheckedIn">–</div></div>
-    <div class="stat"><div class="lbl">Remaining</div><div class="val" id="sRemaining">–</div></div>
+    <div class="stat s-reg"><div class="lbl">Registered</div><div class="val" id="sRegistered">–</div></div>
+    <div class="stat s-chk"><div class="lbl">Checked In</div><div class="val" id="sCheckedIn">–</div></div>
+    <div class="stat s-rem" id="remCard"><div class="lbl">Remaining</div><div class="val" id="sRemaining">–</div></div>
   </div>
 
   <div class="toolbar">
@@ -93,9 +97,9 @@
         osc.stop(audioCtx.currentTime + ms / 1000);
       } catch (e) { /* audio unavailable */ }
     }
-    function beepOk()   { beep(880, 150); }
-    function beepWarn() { beep(440, 250); }
-    function beepErr()  { beep(220, 400); }
+    function beepOk()   { beep(880, 150); }                                   // high single
+    function beepWarn() { beep(600, 120); setTimeout(function(){ beep(600, 120); }, 180); } // double mid
+    function beepErr()  { beep(200, 500); }                                   // low long buzz
 
     function toggleSound() {
       soundOn = !soundOn;
@@ -113,9 +117,12 @@
             EVENT_PREFIX = cfg.prefix;
             document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
           }
-          document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
-          document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
-          document.getElementById('sRemaining').textContent  = (cfg.remaining != null ? cfg.remaining : '–');
+            document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
+            document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
+            var rem = cfg.remaining;
+            document.getElementById('sRemaining').textContent = (rem != null ? rem : '–');
+            var remCard = document.getElementById('remCard');
+            remCard.className = (rem != null && rem < 0) ? 'stat s-over' : 'stat s-rem';
         })
         .catch(function(){ document.getElementById('statusLine').textContent = 'Could not load stats.'; });
     }
