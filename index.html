@@ -125,4 +125,98 @@
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10,
+      { fps: 10, qrbox: { width: 220, height: 220 } },
+      onScan,
+      function(){}
+    ).catch(function(e){
+      document.getElementById('statusLine').textContent = 'Camera unavailable — use manual entry. (' + e + ')';
+    });
+
+    function onScan(text) {
+      var now = Date.now();
+      if (text === lastScan && (now - lastScanTime) < 3000) return;
+      lastScan = text; lastScanTime = now;
+      checkIn(text, false);
+    }
+
+    function submitManual() {
+      var v = document.getElementById('manualId').value.trim().toUpperCase();
+      if (!v) return;
+      if (v.indexOf('-') === -1 && EVENT_PREFIX) v = EVENT_PREFIX + '-' + v;
+      checkIn(v, false);
+    }
+
+    function checkIn(regId, confirmWaitlist) {
+      currentRegId = regId;
+      document.getElementById('statusLine').textContent = 'Checking…';
+      var body = 'token=' + encodeURIComponent(TOKEN) +
+                 '&regId=' + encodeURIComponent(regId) +
+                 '&confirm=' + (confirmWaitlist ? 'true' : 'false');
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      })
+      .then(function(r){ return r.json(); })
+      .then(handleResult)
+      .catch(function(e){ beepErr(); showResult('err', 'Network error', String(e)); });
+    }
+
+    function handleResult(res) {
+      document.getElementById('statusLine').textContent = '';
+      document.getElementById('manualId').value = '';
+      if (res.ok) {
+        beepOk();
+        showResult('ok', '✓ ' + res.name, res.waitlist ? 'Checked in (was waitlist)' : 'Checked in');
+        loadStats();
+      } else if (res.error === 'ALREADY') {
+        beepWarn();
+        showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
+      } else if (res.error === 'WAITLIST_CONFIRM') {
+        beepWarn();
+        showWaitlistConfirm(res);
+      } else if (res.error === 'CANCELLED') {
+        beepErr();
+        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
+      } else if (res.error === 'NOTFOUND') {
+        beepErr();
+        showResult('err', '✗ Not found', 'No registration matches that code');
+      } else if (res.error === 'AUTH') {
+        beepErr();
+        showResult('err', '✗ Auth error', 'Invalid token');
+      } else {
+        beepErr();
+        showResult('err', '✗ Error', res.detail || 'Unknown error');
+      }
+    }
+
+    function showResult(cls, title, sub) {
+      var r = document.getElementById('result');
+      r.className = cls;
+      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub||'') + '</div>';
+      window.scrollTo(0, 0);
+    }
+
+    function showWaitlistConfirm(res) {
+      var r = document.getElementById('result');
+      r.className = 'waitlist';
+      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
+        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
+        '<div class="confirmbtns">' +
+        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
+        '<button class="cbno" onclick="softReset()">Cancel</button>' +
+        '</div>';
+      window.scrollTo(0, 0);
+    }
+
+    function softReset() {
+      var r = document.getElementById('result');
+      r.className = 'idle';
+      r.textContent = 'Ready for next check-in.';
+      document.getElementById('manualId').value = '';
+      document.getElementById('statusLine').textContent = '';
+      lastScan = ''; lastScanTime = 0;
+    }
+  </script>
+</body>
+</html>
