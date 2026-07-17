@@ -7,36 +7,53 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 12px; max-width: 500px; margin: 0 auto; }
-  .header { background: #1a2b45; color: #fff; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 12px; }
-  .header h2 { font-size: 22px; }
-  .header p { color: #c9d6e8; font-size: 18px; margin-top: 6px; font-weight: bold; }
-  .reset-btn-bottom { display: block; width: 100%; margin-top: 14px; background: #1a2b45; color: #fff; border: none; border-radius: 8px; padding: 14px; font-size: 16px; font-weight: bold; }
-  #result { padding: 20px; border-radius: 8px; text-align: center; display: none; margin-bottom: 12px; }
-  #result .name { font-size: 26px; font-weight: bold; margin: 4px 0; }
-  #result .sub { font-size: 16px; margin-top: 6px; }
+  .header { background: #1a2b45; color: #fff; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
+  .header h2 { font-size: 20px; }
+  .header p { color: #c9d6e8; font-size: 16px; margin-top: 4px; font-weight: bold; }
+  .stats { display: flex; gap: 8px; margin-bottom: 10px; }
+  .stat { flex: 1; background: #fff; border: 1px solid #e0e4ea; border-radius: 8px; padding: 10px 4px; text-align: center; }
+  .stat .lbl { font-size: 10px; color: #777; letter-spacing: 0.5px; text-transform: uppercase; }
+  .stat .val { font-size: 22px; font-weight: bold; color: #1a2b45; margin-top: 2px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+  .toolbar button { flex: 1; padding: 8px; font-size: 12px; font-weight: bold; background: #fff; color: #1a2b45; border: 1px solid #ccd3dd; border-radius: 6px; }
+  #result { padding: 18px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
+  #result .name { font-size: 24px; font-weight: bold; margin: 4px 0; }
+  #result .sub { font-size: 15px; margin-top: 6px; }
+  .idle { background: #eef1f5; color: #777; font-size: 15px; }
   .ok { background: #c0dd97; color: #173404; }
   .warn { background: #fac775; color: #633806; }
   .waitlist { background: #f5e4c3; color: #633806; border: 2px solid #633806; }
   .err { background: #f09595; color: #501313; }
-  .confirmbtns { margin-top: 14px; }
-  .confirmbtns button { padding: 12px 18px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; }
+  .confirmbtns { margin-top: 12px; }
+  .confirmbtns button { padding: 10px 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; }
   .cbyes { background: #854f0b; color: #fff; }
   .cbno { background: #999; color: #fff; }
   #reader { width: 100%; max-width: 300px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
-  .manual { margin-top: 12px; display: flex; gap: 8px; }
-  .manual input { flex: 1; padding: 14px; font-size: 18px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
-  .manual button { padding: 14px 20px; font-size: 16px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
-  .status-line { text-align: center; color: #666; font-size: 13px; margin-top: 10px; }
+  .manual { margin-top: 10px; display: flex; gap: 8px; }
+  .manual input { flex: 1; padding: 12px; font-size: 17px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
+  .manual button { padding: 12px 18px; font-size: 15px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
+  .reset-btn-bottom { display: block; width: 100%; margin-top: 12px; background: #1a2b45; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: bold; }
+  .status-line { text-align: center; color: #666; font-size: 12px; margin-top: 8px; }
 </style>
 </head>
 <body>
- 
- <div class="header">
+  <div class="header">
     <h2>Check-In</h2>
     <p id="eventName">Loading event…</p>
   </div>
 
-  <div id="result"></div>
+  <div class="stats">
+    <div class="stat"><div class="lbl">Registered</div><div class="val" id="sRegistered">–</div></div>
+    <div class="stat"><div class="lbl">Checked In</div><div class="val" id="sCheckedIn">–</div></div>
+    <div class="stat"><div class="lbl">Remaining</div><div class="val" id="sRemaining">–</div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="soundBtn" onclick="toggleSound()">🔊 Sound: ON</button>
+    <button onclick="loadStats()">↻ Refresh Stats</button>
+  </div>
+
+  <div id="result" class="idle">Ready for next check-in.</div>
 
   <div id="reader"></div>
 
@@ -45,124 +62,67 @@
     <button onclick="submitManual()">Go</button>
   </div>
 
- <div class="status-line" id="statusLine"></div>
-
   <button class="reset-btn-bottom" onclick="softReset()">↻ Reset / Scan Next</button>
+  <div class="status-line" id="statusLine"></div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
-   
     var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyVlSsvbqw4Vx0auQNK7AxqUQdhjypLZ5DRa3QJVBQZS_KbYEEWq8kwiHokSAWNhArJAg/exec";
     var TOKEN = new URLSearchParams(window.location.search).get('token') || '';
-    var EVENT_PREFIX = ''; // filled from config fetch
+    var EVENT_PREFIX = '';
     var lastScan = '', lastScanTime = 0, currentRegId = '';
+    var soundOn = true;
 
     if (!TOKEN) {
       document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN';
     }
 
-    // --- Fetch event name + prefix from Apps Script ---
-    fetch(WEBAPP_URL + '?action=config&token=' + encodeURIComponent(TOKEN))
-      .then(function(r){ return r.json(); })
-      .then(function(cfg){
-        if (cfg.eventName) document.getElementById('eventName').textContent = cfg.eventName;
-        if (cfg.prefix) {
-          EVENT_PREFIX = cfg.prefix;
-          document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
-        }
-      })
-      .catch(function(){ document.getElementById('eventName').textContent = 'Check-In'; });
+    // --- Sound ---
+    var audioCtx = null;
+    function beep(freq, ms) {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + ms / 1000);
+      } catch (e) { /* audio unavailable */ }
+    }
+    function beepOk()   { beep(880, 150); }
+    function beepWarn() { beep(440, 250); }
+    function beepErr()  { beep(220, 400); }
 
-    // --- Auto-start native camera ---
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('soundBtn').textContent = soundOn ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+      if (soundOn) beepOk();
+    }
+
+    // --- Load config + stats ---
+    function loadStats() {
+      fetch(WEBAPP_URL + '?action=config&token=' + encodeURIComponent(TOKEN))
+        .then(function(r){ return r.json(); })
+        .then(function(cfg){
+          if (cfg.eventName) document.getElementById('eventName').textContent = cfg.eventName;
+          if (cfg.prefix) {
+            EVENT_PREFIX = cfg.prefix;
+            document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
+          }
+          document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
+          document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
+          document.getElementById('sRemaining').textContent  = (cfg.remaining != null ? cfg.remaining : '–');
+        })
+        .catch(function(){ document.getElementById('statusLine').textContent = 'Could not load stats.'; });
+    }
+    loadStats();
+
+    // --- Camera ---
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 220, height: 220 } },
-      onScan,
-      function(){}
-    ).catch(function(e){
-      document.getElementById('statusLine').textContent = 'Camera unavailable — use manual entry. (' + e + ')';
-    });
-
-    function onScan(text) {
-      var now = Date.now();
-      if (text === lastScan && (now - lastScanTime) < 3000) return;
-      lastScan = text; lastScanTime = now;
-      checkIn(text, false);
-    }
-
-    function submitManual() {
-      var v = document.getElementById('manualId').value.trim().toUpperCase();
-      if (!v) return;
-      if (v.indexOf('-') === -1 && EVENT_PREFIX) v = EVENT_PREFIX + '-' + v;
-      checkIn(v, false);
-    }
-
-    function checkIn(regId, confirmWaitlist) {
-      currentRegId = regId;
-      document.getElementById('statusLine').textContent = 'Checking…';
-      var body = 'token=' + encodeURIComponent(TOKEN) +
-                 '&regId=' + encodeURIComponent(regId) +
-                 '&confirm=' + (confirmWaitlist ? 'true' : 'false');
-      fetch(WEBAPP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-      })
-      .then(function(r){ return r.json(); })
-      .then(handleResult)
-      .catch(function(e){ showResult('err', 'Network error', String(e)); });
-    }
-
-    function handleResult(res) {
-      document.getElementById('statusLine').textContent = '';
-      document.getElementById('manualId').value = '';
-      if (res.ok) {
-        showResult('ok', '✓ ' + res.name, res.waitlist ? 'Checked in (was waitlist)' : 'Checked in');
-      } else if (res.error === 'ALREADY') {
-        showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
-      } else if (res.error === 'WAITLIST_CONFIRM') {
-        showWaitlistConfirm(res);
-      } else if (res.error === 'CANCELLED') {
-        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
-      } else if (res.error === 'NOTFOUND') {
-        showResult('err', '✗ Not found', 'No registration matches that code');
-      } else if (res.error === 'AUTH') {
-        showResult('err', '✗ Auth error', 'Invalid token');
-      } else if (res.error === 'EMPTY') {
-        showResult('err', '✗ Empty', 'No code provided');
-      } else {
-        showResult('err', '✗ Error', res.detail || 'Unknown error');
-      }
-    }
-
-    function showResult(cls, title, sub) {
-      var r = document.getElementById('result');
-      r.className = cls;
-      r.style.display = 'block';
-      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub||'') + '</div>';
-      window.scrollTo(0, 0);
-    }
-
-    function showWaitlistConfirm(res) {
-      var r = document.getElementById('result');
-      r.className = 'waitlist';
-      r.style.display = 'block';
-      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
-        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
-        '<div class="confirmbtns">' +
-        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
-        '<button class="cbno" onclick="softReset()">Cancel</button>' +
-        '</div>';
-      window.scrollTo(0, 0);
-    }
-
-    function softReset() {
-      document.getElementById('result').style.display = 'none';
-      document.getElementById('manualId').value = '';
-      document.getElementById('statusLine').textContent = '';
-      lastScan = ''; lastScanTime = 0;
-    }
-  </script>
-</body>
-</html>
+      { fps: 10,
