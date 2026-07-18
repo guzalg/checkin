@@ -1,18 +1,22 @@
 <!DOCTYPE html>
-//-- Clodi help
+
+// CLODI HELP...
 
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Event Check-In</title>
- 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 12px; max-width: 500px; margin: 0 auto; }
+
+  /* Header */
   .header { background: #1a2b45; color: #fff; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
   .header h2 { font-size: 20px; }
   .header p { color: #c9d6e8; font-size: 16px; margin-top: 4px; font-weight: bold; }
+
+  /* Stats */
   .stats { display: flex; gap: 8px; margin-bottom: 10px; }
   .stat { flex: 1; border-radius: 8px; padding: 10px 4px; text-align: center; }
   .stat .lbl { font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
@@ -21,8 +25,12 @@
   .s-chk  { background: #c0dd97; } .s-chk .lbl  { color: #27500a; } .s-chk .val  { color: #173404; }
   .s-rem  { background: #d3d1c7; } .s-rem .lbl  { color: #444441; } .s-rem .val  { color: #2c2c2a; }
   .s-over { background: #f09595; } .s-over .lbl { color: #501313; } .s-over .val { color: #501313; }
+
+  /* Toolbar */
   .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
   .toolbar button { flex: 1; padding: 8px; font-size: 12px; font-weight: bold; background: #fff; color: #1a2b45; border: 1px solid #ccd3dd; border-radius: 6px; }
+
+  /* Result box */
   #result { padding: 18px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
   #result .name { font-size: 24px; font-weight: bold; margin: 4px 0; }
   #result .sub { font-size: 15px; margin-top: 6px; }
@@ -35,18 +43,33 @@
   .confirmbtns button { padding: 10px 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; margin: 4px; }
   .cbyes { background: #854f0b; color: #fff; }
   .cbno { background: #999; color: #fff; }
-  #reader { width: 100%; max-width: 300px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
-  .manual { margin-top: 10px; display: flex; gap: 8px; }
-  .manual input { flex: 1; padding: 12px; font-size: 17px; border: 2px solid #ccc; border-radius: 8px; text-transform: uppercase; }
-  .manual button { padding: 12px 18px; font-size: 15px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
+
+  /* Camera */
+  #reader { width: 100%; max-width: 240px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
+
+  /* Manual Lookup / Search */
+  .lookup-box { background: #f7f9fc; border: 1px solid #e0e4ea; border-radius: 10px; padding: 14px; margin-top: 14px; }
+  .lookup-title { text-align: center; font-size: 16px; font-weight: bold; color: #1a2b45; margin-top: 4px; }
+  .lookup-hint { text-align: center; font-size: 12px; color: #888; margin-bottom: 10px; }
+  .manual { display: flex; gap: 8px; }
+  .manual input { flex: 1; padding: 13px; font-size: 16px; border: 2px solid #ccc; border-radius: 8px; text-transform: none; }
+  .manual button { padding: 13px 18px; font-size: 15px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; }
+  #searchResults { margin-top: 10px; }
+  .res { background: #fff; border: 1px solid #e0e4ea; border-radius: 10px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .res .info { text-align: left; flex: 1; }
+  .res .rname { font-size: 17px; font-weight: bold; color: #1a2b45; }
+  .res .rmeta { font-size: 12px; color: #777; margin-top: 3px; }
+  .res button { padding: 12px 18px; font-size: 15px; font-weight: bold; background: #1a2b45; color: #fff; border: none; border-radius: 8px; white-space: nowrap; }
+  .res .done { background: #c0dd97; color: #173404; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; white-space: nowrap; }
+  .no-res { text-align: center; color: #888; font-size: 14px; padding: 12px; }
+
+  /* Bottom reset */
   .reset-btn-bottom { display: block; width: 100%; margin-top: 12px; background: #1a2b45; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: bold; }
   .status-line { text-align: center; color: #666; font-size: 12px; margin-top: 8px; }
- 
- /* Touch feedback — buttons visibly react when pressed */
+
+  /* Touch feedback — buttons visibly react when pressed */
   button { transition: transform 0.05s ease, filter 0.05s ease; -webkit-tap-highlight-color: transparent; }
   button:active { transform: scale(0.96); filter: brightness(0.85); }
-
- 
 </style>
 </head>
 <body>
@@ -70,21 +93,27 @@
 
   <div id="reader"></div>
 
-  <div class="lookup-title">Manual Lookup</div>
-    <div class="lookup-hint">Search by name, email, phone, or Registration ID</div>
+  <div class="lookup-box">
+    <div class="lookup-title">🔍 Find a Guest</div>
+    <div class="lookup-hint">Search by name, email, phone, or Reg ID</div>
     <div class="manual">
-      <input type="text" id="searchBox" placeholder="e.g. Maria, 787..., or FCS26-K7M2" autocomplete="off">
+      <input type="text" id="searchBox" placeholder="e.g. Maria, 787…, FCS26-K7M2" autocomplete="off"
+             onkeydown="if(event.key==='Enter')doSearch()">
       <button onclick="doSearch()">Search</button>
     </div>
     <div id="searchResults"></div>
- 
+  </div>
 
   <button class="reset-btn-bottom" onclick="softReset()">↻ Reset / Scan Next</button>
   <div class="status-line" id="statusLine"></div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
+    // ====== CONFIG ======
+    // IMPORTANT: verify this matches your current Apps Script deployment URL.
     var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyVlSsvbqw4Vx0auQNK7AxqUQdhjypLZ5DRa3QJVBQZS_KbYEEWq8kwiHokSAWNhArJAg/exec";
+    
+
     var TOKEN = new URLSearchParams(window.location.search).get('token') || '';
     var EVENT_PREFIX = '';
     var lastScan = '', lastScanTime = 0, currentRegId = '';
@@ -94,7 +123,7 @@
       document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN';
     }
 
-    // --- Sound ---
+    // ====== SOUND ======
     var audioCtx = null;
     function beep(freq, ms) {
       if (!soundOn) return;
@@ -110,9 +139,9 @@
         osc.stop(audioCtx.currentTime + ms / 1000);
       } catch (e) { /* audio unavailable */ }
     }
-    function beepOk()   { beep(880, 150); }                                   // high single
+    function beepOk()   { beep(880, 150); }                                    // high single
     function beepWarn() { beep(600, 120); setTimeout(function(){ beep(600, 120); }, 180); } // double mid
-    function beepErr()  { beep(200, 500); }                                   // low long buzz
+    function beepErr()  { beep(200, 500); }                                    // low long buzz
 
     function toggleSound() {
       soundOn = !soundOn;
@@ -120,36 +149,33 @@
       if (soundOn) beepOk();
     }
 
-    // --- Load config + stats ---
+    // ====== CONFIG + STATS ======
     function loadStats() {
       fetch(WEBAPP_URL + '?action=config&token=' + encodeURIComponent(TOKEN))
         .then(function(r){ return r.json(); })
         .then(function(cfg){
           if (cfg.eventName) document.getElementById('eventName').textContent = cfg.eventName;
-//          if (cfg.prefix) {
-//            EVENT_PREFIX = cfg.prefix;
-//            document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
-//          }
-            document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
-            document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
-            var rem = cfg.remaining;
-            document.getElementById('sRemaining').textContent = (rem != null ? rem : '–');
-            var remCard = document.getElementById('remCard');
-            remCard.className = (rem != null && rem < 0) ? 'stat s-over' : 'stat s-rem';
+          if (cfg.prefix) { EVENT_PREFIX = cfg.prefix; }
+          document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
+          document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
+          var rem = cfg.remaining;
+          document.getElementById('sRemaining').textContent = (rem != null ? rem : '–');
+          var remCard = document.getElementById('remCard');
+          remCard.className = (rem != null && rem < 0) ? 'stat s-over' : 'stat s-rem';
         })
         .catch(function(){ document.getElementById('statusLine').textContent = 'Could not load stats.'; });
     }
     loadStats();
 
-    // --- Camera ---
+    // ====== CAMERA ======
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 220, height: 220 } },
+      { fps: 10, qrbox: { width: 200, height: 200 } },
       onScan,
       function(){}
     ).catch(function(e){
-      document.getElementById('statusLine').textContent = 'Camera unavailable — use manual entry. (' + e + ')';
+      document.getElementById('statusLine').textContent = 'Camera unavailable — use search below. (' + e + ')';
     });
 
     function onScan(text) {
@@ -159,7 +185,8 @@
       checkIn(text, false);
     }
 
-function doSearch() {
+    // ====== SEARCH ======
+    function doSearch() {
       var q = document.getElementById('searchBox').value.trim();
       if (q.length < 2) {
         document.getElementById('searchResults').innerHTML =
@@ -208,6 +235,7 @@ function doSearch() {
       checkIn(regId, false);
     }
 
+    // ====== CHECK-IN ======
     function checkIn(regId, confirmWaitlist) {
       currentRegId = regId;
       document.getElementById('statusLine').textContent = 'Checking…';
@@ -226,7 +254,6 @@ function doSearch() {
 
     function handleResult(res) {
       document.getElementById('statusLine').textContent = '';
-      document.getElementById('manualId').value = '';
       if (res.ok) {
         beepOk();
         showResult('ok', '✓ ' + res.name, res.waitlist ? 'Checked in (was waitlist)' : 'Checked in');
@@ -255,7 +282,7 @@ function doSearch() {
     function showResult(cls, title, sub) {
       var r = document.getElementById('result');
       r.className = cls;
-      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub||'') + '</div>';
+      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub || '') + '</div>';
       window.scrollTo(0, 0);
     }
 
@@ -275,7 +302,8 @@ function doSearch() {
       var r = document.getElementById('result');
       r.className = 'idle';
       r.textContent = 'Ready for next check-in.';
-      document.getElementById('manualId').value = '';
+      document.getElementById('searchBox').value = '';
+      document.getElementById('searchResults').innerHTML = '';
       document.getElementById('statusLine').textContent = '';
       lastScan = ''; lastScanTime = 0;
     }
