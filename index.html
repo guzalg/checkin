@@ -69,6 +69,9 @@
   /* Touch feedback — buttons visibly react when pressed */
   button { transition: transform 0.05s ease, filter 0.05s ease; -webkit-tap-highlight-color: transparent; }
   button:active { transform: scale(0.96); filter: brightness(0.85); }
+ 
+  .cbfull { background: #b5651d; color: #fff; }
+ 
 </style>
 </head>
 <body>
@@ -262,21 +265,45 @@
         showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
       } else if (res.error === 'WAITLIST_CONFIRM') {
         beepWarn();
-        showWaitlistConfirm(res);
-      } else if (res.error === 'CANCELLED') {
-        beepErr();
-        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
-      } else if (res.error === 'NOTFOUND') {
-        beepErr();
-        showResult('err', '✗ Not found', 'No registration matches that code');
-      } else if (res.error === 'AUTH') {
-        beepErr();
-        showResult('err', '✗ Auth error', 'Invalid token');
-      } else {
-        beepErr();
-        showResult('err', '✗ Error', res.detail || 'Unknown error');
-      }
+
+function showWaitlistConfirm(res) {
+      var r = document.getElementById('result');
+      r.className = 'waitlist';
+      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
+        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
+        '<div class="confirmbtns">' +
+        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
+        '<button class="cbfull" onclick="markArrivedFull(currentRegId)">Arrived — full</button>' +
+        '<button class="cbno" onclick="softReset()">Cancel</button>' +
+        '</div>';
+      window.scrollTo(0, 0);
     }
+
+       
+    function markArrivedFull(regId) {
+      document.getElementById('statusLine').textContent = 'Recording…';
+      var body = 'token=' + encodeURIComponent(TOKEN) +
+                 '&action=arrivedFull&regId=' + encodeURIComponent(regId);
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        document.getElementById('statusLine').textContent = '';
+        if (res.ok) {
+          beepWarn();
+          showResult('warn', '📋 ' + res.name, 'Recorded: arrived but couldn\'t be admitted (full)');
+        } else {
+          beepErr();
+          showResult('err', '✗ Error', 'Could not record');
+        }
+      })
+      .catch(function(e){ beepErr(); showResult('err', 'Network error', String(e)); });
+    }
+
+   
 
     function showResult(cls, title, sub) {
       var r = document.getElementById('result');
