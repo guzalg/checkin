@@ -1,6 +1,8 @@
 
 <!DOCTYPE html>
+
 <!-- File created with CLODI help 🚀 -->
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -254,7 +256,7 @@
       .catch(function(e){ beepErr(); showResult('err', 'Network error', String(e)); });
     }
 
-    function handleResult(res) {
+function handleResult(res) {
       document.getElementById('statusLine').textContent = '';
       if (res.ok) {
         beepOk();
@@ -265,8 +267,30 @@
         showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
       } else if (res.error === 'WAITLIST_CONFIRM') {
         beepWarn();
+        showWaitlistConfirm(res);
+      } else if (res.error === 'CANCELLED') {
+        beepErr();
+        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
+      } else if (res.error === 'NOTFOUND') {
+        beepErr();
+        showResult('err', '✗ Not found', 'No registration matches that code');
+      } else if (res.error === 'AUTH') {
+        beepErr();
+        showResult('err', '✗ Auth error', 'Invalid token');
+      } else {
+        beepErr();
+        showResult('err', '✗ Error', res.detail || 'Unknown error');
+      }
+    }
 
-function showWaitlistConfirm(res) {
+    function showResult(cls, title, sub) {
+      var r = document.getElementById('result');
+      r.className = cls;
+      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub || '') + '</div>';
+      window.scrollTo(0, 0);
+    }
+
+    function showWaitlistConfirm(res) {
       var r = document.getElementById('result');
       r.className = 'waitlist';
       r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
@@ -279,7 +303,6 @@ function showWaitlistConfirm(res) {
       window.scrollTo(0, 0);
     }
 
-       
     function markArrivedFull(regId) {
       document.getElementById('statusLine').textContent = 'Recording…';
       var body = 'token=' + encodeURIComponent(TOKEN) +
@@ -301,27 +324,6 @@ function showWaitlistConfirm(res) {
         }
       })
       .catch(function(e){ beepErr(); showResult('err', 'Network error', String(e)); });
-    }
-
-   
-
-    function showResult(cls, title, sub) {
-      var r = document.getElementById('result');
-      r.className = cls;
-      r.innerHTML = '<div class="name">' + title + '</div><div class="sub">' + (sub || '') + '</div>';
-      window.scrollTo(0, 0);
-    }
-
-    function showWaitlistConfirm(res) {
-      var r = document.getElementById('result');
-      r.className = 'waitlist';
-      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
-        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
-        '<div class="confirmbtns">' +
-        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
-        '<button class="cbno" onclick="softReset()">Cancel</button>' +
-        '</div>';
-      window.scrollTo(0, 0);
     }
 
     function softReset() {
