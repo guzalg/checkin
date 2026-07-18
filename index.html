@@ -1,9 +1,12 @@
 <!DOCTYPE html>
+//-- Clodi help
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Event Check-In</title>
+ 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 12px; max-width: 500px; margin: 0 auto; }
@@ -42,6 +45,7 @@
  /* Touch feedback — buttons visibly react when pressed */
   button { transition: transform 0.05s ease, filter 0.05s ease; -webkit-tap-highlight-color: transparent; }
   button:active { transform: scale(0.96); filter: brightness(0.85); }
+
  
 </style>
 </head>
@@ -66,10 +70,14 @@
 
   <div id="reader"></div>
 
-  <div class="manual">
-    <input type="text" id="manualId" placeholder="Type last 4" autocomplete="off">
-    <button onclick="submitManual()">Go</button>
-  </div>
+  <div class="lookup-title">Manual Lookup</div>
+    <div class="lookup-hint">Search by name, email, phone, or Registration ID</div>
+    <div class="manual">
+      <input type="text" id="searchBox" placeholder="e.g. Maria, 787..., or FCS26-K7M2" autocomplete="off">
+      <button onclick="doSearch()">Search</button>
+    </div>
+    <div id="searchResults"></div>
+ 
 
   <button class="reset-btn-bottom" onclick="softReset()">↻ Reset / Scan Next</button>
   <div class="status-line" id="statusLine"></div>
@@ -118,10 +126,10 @@
         .then(function(r){ return r.json(); })
         .then(function(cfg){
           if (cfg.eventName) document.getElementById('eventName').textContent = cfg.eventName;
-          if (cfg.prefix) {
-            EVENT_PREFIX = cfg.prefix;
-            document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
-          }
+//          if (cfg.prefix) {
+//            EVENT_PREFIX = cfg.prefix;
+//            document.getElementById('manualId').placeholder = 'Type last 4 (' + cfg.prefix + '-____)';
+//          }
             document.getElementById('sRegistered').textContent = (cfg.confirmed != null ? cfg.confirmed : '–');
             document.getElementById('sCheckedIn').textContent  = (cfg.checkedIn != null ? cfg.checkedIn : '–');
             var rem = cfg.remaining;
@@ -151,11 +159,53 @@
       checkIn(text, false);
     }
 
-    function submitManual() {
-      var v = document.getElementById('manualId').value.trim().toUpperCase();
-      if (!v) return;
-      if (v.indexOf('-') === -1 && EVENT_PREFIX) v = EVENT_PREFIX + '-' + v;
-      checkIn(v, false);
+function doSearch() {
+      var q = document.getElementById('searchBox').value.trim();
+      if (q.length < 2) {
+        document.getElementById('searchResults').innerHTML =
+          '<div class="no-res">Type at least 2 characters.</div>';
+        return;
+      }
+      document.getElementById('searchResults').innerHTML = '<div class="no-res">Searching…</div>';
+      var body = 'token=' + encodeURIComponent(TOKEN) +
+                 '&action=search&q=' + encodeURIComponent(q);
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      })
+      .then(function(r){ return r.json(); })
+      .then(showSearchResults)
+      .catch(function(e){
+        document.getElementById('searchResults').innerHTML =
+          '<div class="no-res">Search error: ' + e + '</div>';
+      });
+    }
+
+    function showSearchResults(res) {
+      var box = document.getElementById('searchResults');
+      if (!res.ok || !res.results || res.results.length === 0) {
+        box.innerHTML = '<div class="no-res">No matches found.</div>';
+        return;
+      }
+      var html = '';
+      res.results.forEach(function(p) {
+        var meta = p.regId + ' · ' + p.status + (p.phone ? ' · ' + p.phone : '');
+        html += '<div class="res">' +
+          '<div class="info"><div class="rname">' + p.name + '</div>' +
+          '<div class="rmeta">' + meta + '</div></div>' +
+          (p.checkedIn
+            ? '<span class="done">✓ In' + (p.when ? ' ' + p.when : '') + '</span>'
+            : '<button onclick="checkInFromSearch(\'' + p.regId + '\')">Check In</button>') +
+          '</div>';
+      });
+      box.innerHTML = html;
+    }
+
+    function checkInFromSearch(regId) {
+      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('searchBox').value = '';
+      checkIn(regId, false);
     }
 
     function checkIn(regId, confirmWaitlist) {
