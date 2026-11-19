@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 
-<!-- File created with CLODI help too 🚀 -->
+<!-- File created with CLODI help 🚀 -->
 
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Opportunity Night Check-In</title>
+<title>Noche de Oportunidad – Check-In</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; background: #f4f5f7; padding: 12px; max-width: 500px; margin: 0 auto; }
@@ -45,7 +45,7 @@
   .cbno { background: #999; color: #fff; }
 
   /* Camera */
-  #reader { width: 100%; max-width: 240px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
+  #reader { width: 100%; max-width: 320px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
 
   /* Manual Lookup / Search */
   .lookup-box { background: #f7f9fc; border: 1px solid #e0e4ea; border-radius: 10px; padding: 14px; margin-top: 14px; }
@@ -126,6 +126,12 @@
       document.getElementById('statusLine').textContent = '⚠ No token in URL. Add ?token=YOUR_TOKEN';
     }
 
+    // Escape text from registrations before putting it into the page
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     // ====== SOUND ======
     var audioCtx = null;
     function beep(freq, ms) {
@@ -174,7 +180,7 @@
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 200, height: 200 } },
+      { fps: 10, qrbox: { width: 240, height: 240 } },
       onScan,
       function(){}
     ).catch(function(e){
@@ -220,13 +226,13 @@
       }
       var html = '';
       res.results.forEach(function(p) {
-        var meta = p.regId + ' · ' + p.status + (p.phone ? ' · ' + p.phone : '');
+        var meta = esc(p.regId) + ' · ' + esc(p.status) + (p.phone ? ' · ' + esc(p.phone) : '');
         html += '<div class="res">' +
-          '<div class="info"><div class="rname">' + p.name + '</div>' +
+          '<div class="info"><div class="rname">' + esc(p.name) + '</div>' +
           '<div class="rmeta">' + meta + '</div></div>' +
           (p.checkedIn
             ? '<span class="done">✓ In' + (p.when ? ' ' + p.when : '') + '</span>'
-            : '<button onclick="checkInFromSearch(\'' + p.regId + '\')">Check In</button>') +
+            : '<button onclick="checkInFromSearch(\'' + esc(p.regId) + '\')">Check In</button>') +
           '</div>';
       });
       box.innerHTML = html;
@@ -259,17 +265,21 @@ function handleResult(res) {
       document.getElementById('statusLine').textContent = '';
       if (res.ok) {
         beepOk();
-        showResult('ok', '✓ ' + res.name, res.waitlist ? 'Checked in (was waitlist)' : 'Checked in');
+        showResult('ok', '✓ ' + esc(res.name),
+          res.waitlist ? 'Checked in (was waitlist)' : res.late ? 'Checked in (late registration)' : 'Checked in');
         loadStats();
       } else if (res.error === 'ALREADY') {
         beepWarn();
-        showResult('warn', '⚠ ' + res.name, 'Already checked in' + (res.when ? ' at ' + res.when : ''));
+        showResult('warn', '⚠ ' + esc(res.name), 'Already checked in' + (res.when ? ' at ' + res.when : ''));
       } else if (res.error === 'WAITLIST_CONFIRM') {
         beepWarn();
         showWaitlistConfirm(res);
+      } else if (res.error === 'LATE_CONFIRM') {
+        beepWarn();
+        showLateConfirm(res);
       } else if (res.error === 'CANCELLED') {
         beepErr();
-        showResult('err', '✗ ' + res.name, 'Registration CANCELLED');
+        showResult('err', '✗ ' + esc(res.name), 'Registration CANCELLED');
       } else if (res.error === 'NOTFOUND') {
         beepErr();
         showResult('err', '✗ Not found', 'No registration matches that code');
@@ -292,11 +302,26 @@ function handleResult(res) {
     function showWaitlistConfirm(res) {
       var r = document.getElementById('result');
       r.className = 'waitlist';
-      r.innerHTML = '<div class="name">⚠ ' + res.name + '</div>' +
-        '<div class="sub">WAITLIST — currently ' + res.confirmedCount + ' / ' + res.capacity + ' checked in</div>' +
+      r.innerHTML = '<div class="name">⚠ ' + esc(res.name) + '</div>' +
+        '<div class="sub">WAITLIST — confirmed now: ' + res.confirmedCount + ' / ' + res.capacity + '</div>' +
         '<div class="confirmbtns">' +
         '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
         '<button class="cbfull" onclick="markArrivedFull(currentRegId)">Arrived — full</button>' +
+        '<button class="cbno" onclick="softReset()">Cancel</button>' +
+        '</div>';
+      window.scrollTo(0, 0);
+    }
+
+    function showLateConfirm(res) {
+      var why = (res.flag === 'LATE')
+        ? 'Registered AFTER registration closed (late)'
+        : 'Registered while registration was CLOSED';
+      var r = document.getElementById('result');
+      r.className = 'waitlist';
+      r.innerHTML = '<div class="name">⚠ ' + esc(res.name) + '</div>' +
+        '<div class="sub">' + why + '<br>Confirmed now: ' + res.confirmedCount + ' / ' + res.capacity + '</div>' +
+        '<div class="confirmbtns">' +
+        '<button class="cbyes" onclick="checkIn(currentRegId, true)">Check in anyway</button>' +
         '<button class="cbno" onclick="softReset()">Cancel</button>' +
         '</div>';
       window.scrollTo(0, 0);
@@ -316,7 +341,7 @@ function handleResult(res) {
         document.getElementById('statusLine').textContent = '';
         if (res.ok) {
           beepWarn();
-          showResult('warn', '📋 ' + res.name, 'Recorded: arrived but couldn\'t be admitted (full)');
+          showResult('warn', '📋 ' + esc(res.name), 'Recorded: arrived but couldn\'t be admitted (full)');
         } else {
           beepErr();
           showResult('err', '✗ Error', 'Could not record');
