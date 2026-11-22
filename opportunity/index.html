@@ -45,7 +45,7 @@
   .cbno { background: #999; color: #fff; }
 
   /* Camera */
-  #reader { width: 100%; max-width: 320px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
+  #reader { width: 100%; max-width: 280px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #000; }
 
   /* Manual Lookup / Search */
   .lookup-box { background: #f7f9fc; border: 1px solid #e0e4ea; border-radius: 10px; padding: 14px; margin-top: 14px; }
@@ -180,7 +180,7 @@
     var scanner = new Html5Qrcode("reader");
     scanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 240, height: 240 } },
+      { fps: 10, qrbox: { width: 210, height: 210 } },
       onScan,
       function(){}
     ).catch(function(e){
